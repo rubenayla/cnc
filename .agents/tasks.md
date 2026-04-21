@@ -15,7 +15,6 @@ Tag each task with **[ruben]** or **[ai]** to indicate who's best placed to do i
 - [ruben] **Confirm connection type**: is the laptop connected to the CNC via RS-232 serial cable (+ USB-serial adapter?) or Ethernet? If serial, take a photo of both ends of the cable and the adapter.
 - [ruben] **Capture a failing WinDNC log**: after reproducing the red-text symptom, zip `C:\Fagor\WinDnc\` and drop it here under `logs/YYYY-MM-DD_red_text/windnc_log.zip`. Include a screenshot of the red text.
 - [ruben] **Set up SSH into the Windows laptop** — follow `connection/ssh_setup.md` (AI will create this file once peer is ready). Requires peer to run PowerShell-as-admin commands to install OpenSSH Server. Give me the laptop's IP + username once sshd is running and I'll take it from there.
-- [ruben] **Decide on git remote**: create a public GitHub repo `rubenayla/cnc` (or whatever name) and add it as origin. Repo is currently local-only.
 - [ai] **Write `connection/ssh_setup.md`**: step-by-step PowerShell instructions for the peer to enable OpenSSH Server on Windows, open firewall port 22, set sshd to autostart, make PowerShell the default shell, and share IP + username. Include the Mac-side `ssh-copy-id` + `~/.ssh/config` snippet.
 - [ai] **Populate `docs/README.md`**: list the Fagor PDFs that should live in `docs/` (8055 Operating Manual, 8055 Installation Manual with serial/Ethernet params, WinDNC setup guide, 8055 error code list) with official Fagor download links. Don't commit the PDFs themselves until we know if we want them in git vs gitignored.
 - [ai] **Write `connection/network_map.md` template**: placeholders for CNC IP, laptop IP, subnet, SSH host alias, WinDNC port/baud. Ruben fills in values as he gathers them.
@@ -29,3 +28,4 @@ _(empty — claim a task by moving it here with `[YYYY-MM-DD owner]` prefix)_
 ## Done
 
 - [2026-04-21] **Scaffold repo**: created `~/repos/cnc/` with `AGENTS.md`, `README.md`, `.agents/tasks.md`, `docs/`, `logs/`. Layout documented in `AGENTS.md`.
+- [2026-04-21] **Create public GitHub remote**: https://github.com/rubenayla/cnc pushed as `origin/main`.
