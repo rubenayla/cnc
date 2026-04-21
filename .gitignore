@@ -1,0 +1,9 @@
+.DS_Store
+
+# Secrets — never commit
+secrets.md
+*.key
+*.pem
+
+# Ruben can uncomment if docs/ PDFs get huge and we'd rather link to them
+# docs/*.pdf
