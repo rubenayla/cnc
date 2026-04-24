@@ -7,7 +7,8 @@ Markdown notes only. Binary assets (photos, vendor PDFs) live under `resources/`
 Contents:
 
 1. **`machine.md`** — identification of the physical machine. Start here.
-2. **This file** — URL index and PDF policy.
+2. **`rs232_pinout.md`** — the Fagor 8050/8055 CNC-side pinout + cable diagrams.
+3. **This file** — URL index and PDF policy.
 
 ## Where binary assets live
 

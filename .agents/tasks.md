@@ -4,46 +4,76 @@
 
 Shared kanban for Ruben + AI agents. Protocol: read before editing, claim before starting (move to In Progress with date + agent ID), atomic edits (one task at a time), mark Done only once verified.
 
-Tag each task with **[ruben]** or **[ai]** to indicate who's best placed to do it. Either side can help, but the tag is the default owner.
+Tag each task with **[ruben]** or **[ai]**. Either side can help; the tag is the default owner.
 
-## TODO
+## Current status — read this before picking anything up
 
-- [ruben] **Photo-verify Fagor version**: Ruben confirmed on-site 2026-04-24 that it's 8055-M. For audit trail, photograph either (a) the `UTILIDADES → VERSION` screen (shows `FAGOR 80xx VERSION n.nn` + firmware rev) or (b) the label on the back of the operator panel (stamped model code). Once done, this closes out the 8050-vs-8055 trail in `docs/machine.md` and pins down the exact firmware for manual-edition matching.
-- [ruben] **Read `P22`** (installation/machine parameters → general params): decides whether DNC rides on `X3` (RS-232) or `X4` (RS-422). Given Line 2 + Harting labelled "RS232", a mismatch here is the most suspicious single item on the parameter list. Document the value found and whether it matches the cabinet cable routing.
-- [ruben] **Open the "RS232 DNC" Harting hood** on the cabinet and photograph the DB connector inside + how it's wired. Verify: `2↔3, 3↔2, 5↔5`, and `4-6-8` shorted at *each* hood. This is the canonical 8055 null-modem pinout from forum consensus.
-- [ruben] **Drop baud to 9600 (both CNC and WinDNC) and retest.** Early 8055s can't run 19200 reliably — 9600 first, raise later only if everything else is stable.
-  - **CNC side — from main menu:**
-    1. `MAIN MENU` key
-    2. `F7` (arrow / "more options") to reach second page of soft-keys
-    3. `PARAMETROS MAQUINA` soft-key (may be abbreviated `PARAM. M.`)
-    4. `LINEAS SERIE` soft-key
-    5. `LINEA SERIE 2` soft-key — **verify title bar reads `PARAM. LINEA SERIE 2`, not SERIE 1**. DNC is on Line 2.
-    6. Highlight `P000 BAUDRATE` (top row, usually already selected)
-    7. `F2 MODIFICAR` (or `F1 EDITAR` if F2 does nothing — wording varies by firmware)
-    8. `CL` to wipe the current `008`
-    9. Type `7` on the numeric keypad
-    10. `ENTER` — row should now read `P000 | 007 | BAUDRATE`
-    11. `F6 SALVAR` — writes to non-volatile memory. **Do not skip**: with the backup battery dead, unsaved changes evaporate at power-cycle.
-    12. `ESC` out, then press `RESET` (or full power-cycle) so the DNC task re-reads the params.
-  - **PC side (WinDNC):** Setup → Connection → change this CNC's profile baud from 19200 to 9600. Leave everything else: 8 / N / 1, Fagor protocol, XON-XOFF flow control.
-  - **Test:** ask WinDNC to read the CNC's directory (shortest round-trip). If listing loads → port layer is healthy at 9600. If screen still goes red → 9600 isn't the problem; next suspect is `P22`.
-  - **Log result:** create `logs/2026-04-24_baud_9600/notes.md` (or whatever date) noting: prior value (008), new value (007), whether RESET was enough or power-cycle was needed, what WinDNC did after, any error numbers shown on the CNC.
-- [ruben] **Reinstall WinDNC** on the Windows laptop before any on-site parameter work. Cheap first step; corrupted installs have been reported to produce persistent red-background even when everything else is correct.
-- [ruben] **Identify the USB-serial adapter chipset** (Windows Device Manager → COM ports → properties → driver / hardware ID). If it's Prolific PL-2303, swap for an FTDI FT232-based cable — the Fagor-friendly "CNC-SW-25M" on eBay is pre-wired.
-- [ruben] **Re-shoot INTZA nameplate**: current photo doesn't show TIPO or Nº clearly. Need a close-up, flash off, with raking light so the stamped model + serial are legible. Needed before we can contact INTZA for a manual.
-- [ruben] **Email Holke for schematics** (`comercial@eholke.com`, in Spanish). They still exist at +34 943 310 744 — the nameplate phone number still works. Ask for: operator manual for F 2230 Nº 997, **Esquema Nº 011001**, parts list. Attach `resources/photos/nameplate.jpg`. Their maintenance arm is SEMAVE.
-- [ruben] **Email INTZA** (`intza@intza.com`) once the TIPO is legible — ask for operation manual + drop-in replacement if EOL + spare sight-glass / refill-filter part numbers.
-- [ruben] **Replace CPU-board backup battery** on the 8050 — clock is frozen at 01 Julio 2022, meaning the lithium is dead and parameters could be next. Identify battery type before visit.
-- [ruben] **Photograph the serial/Ethernet ports on the back of the operator panel**: labels visible (X1/X2/SERIE 1/etc.), plus what's currently plugged in. This decides the pinout conversation.
-- [ruben] **Photograph the current WinDNC config dialogs**: Setup → Connection (protocol, port, baud, parity, stop bits), and the profile selected for this CNC. Also note WinDNC version (Help → About).
-- [ruben] **Capture the CNC-side DNC state**: screenshot of the 8055 screen showing whether `DNC` / `DNC E` appears top-right during a transfer attempt, and the error number if any. Plus machine parameters `DNCTYPE` and `PROTOCOL` values if you can reach them (F7 → setup → machine parameters → serial lines).
-- [ruben] **Confirm connection type**: is the laptop connected to the CNC via RS-232 serial cable (+ USB-serial adapter?) or Ethernet? If serial, take a photo of both ends of the cable and the adapter.
-- [ruben] **Capture a failing WinDNC log**: after reproducing the red-text symptom, zip `C:\Fagor\WinDnc\` and drop it here under `logs/YYYY-MM-DD_red_text/windnc_log.zip`. Include a screenshot of the red text.
-- [ruben] **Set up SSH into the Windows laptop** — follow `connection/ssh_setup.md` (AI will create this file once peer is ready). Requires peer to run PowerShell-as-admin commands to install OpenSSH Server. Give me the laptop's IP + username once sshd is running and I'll take it from there.
-- [ai] **Write `connection/ssh_setup.md`**: step-by-step PowerShell instructions for the peer to enable OpenSSH Server on Windows, open firewall port 22, set sshd to autostart, make PowerShell the default shell, and share IP + username. Include the Mac-side `ssh-copy-id` + `~/.ssh/config` snippet.
-- [ai] **Write `connection/network_map.md` template**: placeholders for CNC IP, laptop IP, subnet, SSH host alias, WinDNC port/baud. Ruben fills in values as he gathers them.
-- [ai] **Draft a `logs/README.md`** explaining the dated-subfolder convention and what evidence a good debugging log should contain (WinDNC log, screenshot of error, what was tried, CNC-side state, outcome).
-- [ai] **Once SSH is up, do first remote inspection**: ssh into `cnc-laptop`, locate `C:\Fagor\WinDnc\`, read any `.log` files, run `Get-PnpDevice -Class Ports` to enumerate COM ports, and write findings to `logs/YYYY-MM-DD_first_remote_session/notes.md`.
+**The DNC "red text" bug has TWO likely open causes**, one of which is confirmed:
+
+1. **File content (confirmed)** — `1001.pim` is a broken Fagor 8025→8055 converter output (see `.agents/history.md` 2026-04-25 "File `1001.pim` is the bug" entry). 527 KB after junk-stripping vs 108 KB free memory, block numbers above the N9999 ceiling. Fix: re-generate cleanly from CAM, or use DNC execution mode instead of COPY.
+2. **Cable pinout (open)** — the peer has been using a generic Amazon USB-C to RS-232 adapter + an unknown DB-9 cable. The Fagor 8050/8055 CNC-side DB-9 is non-standard (pin 7 = GND, not pin 5). Unless the cabinet's Harting hood has a Fagor adaptation pigtail inside, PC ground is landing on CNC CTS and the transfer is only working through chassis-ground coupling — intermittent by nature. See `.agents/history.md` 2026-04-25 "Second open issue" entry and `docs/rs232_pinout.md` for the correct pinout.
+
+Port assignment, machine parameters (baud, bits, parity, flow control, protocol), and DNC-on-power-up are all verified correct. A **Holke/Fagor technician is coming on-site** to teach Ruben; most CNC-side tasks below are framed around that visit.
+
+## Before the technician visit — prep (Ruben)
+
+- **Minimal test program ready on the laptop.** Create `test.pim` on the Windows laptop containing exactly:
+  ```
+  %0999,M,
+  (MSG "DNC OK")
+  M30
+  ```
+  (three lines, CRLF line endings, saved as `test.pim` in WinDNC's working directory). This is the first thing to transfer during the visit — if it copies and P999 becomes a valid 3-block program, the whole DNC stack is healthy and the technician can focus on the real problem (workflow, not wiring).
+- **Repo up to date on the laptop.** Clone or pull `github.com/rubenayla/cnc` on the Windows laptop so the technician can read `docs/rs232_pinout.md`, the manuals under `resources/manuals/`, and `.agents/history.md` while on-site. Run `git pull` the morning of the visit.
+- **WinDNC version captured.** Help → About → screenshot → save to `logs/YYYY-MM-DD_tech_visit/windnc_version.png`.
+- **WinDNC log folder zipped.** `C:\Fagor\WinDnc\` — make a zip before the visit in case the technician clears it. Save to `logs/YYYY-MM-DD_tech_visit/windnc_before.zip`.
+- **USB-serial adapter details captured.** Device Manager → COM ports → properties → hardware ID (FTDI / Prolific / CH340 / CP2102). Photograph the physical adapter, both ends. **Note the model / Amazon listing name if possible** — the generic ones expose standard DB-9 PC pinout, which does NOT match the CNC's non-standard pinout unless a Fagor pigtail sits between them.
+- **Photograph the current cable path end-to-end.** From the laptop USB-C port → USB-to-RS-232 adapter → DB-9 cable → Harting hood → cabinet. One photo of each link. This is the evidence the technician needs to diagnose the wiring suspect without having to re-trace it themselves.
+- **Battery type identified.** Pre-buy if possible: expected is a 3.6 V Saft LS14500 (AA-sized) lithium on the 8055 CPU board. Confirm with the technician before swapping.
+- **Questions list ready** (see below).
+
+## Questions to ask the technician on-site
+
+1. **`1001.pim` workflow.** Is the 8025→8055 converter supposed to produce runnable output, or is it only for reference? What's the peer's intended CAM-to-CNC chain? (ideally bypass the 8025 path entirely)
+2. **DNC execution mode** — can the 8055-M execute large programs streamed block-by-block over Line 2 without storing them in EEPROM? What's the keystroke to enter that mode? (operator manual chapter reference appreciated)
+3. **EEPROM size and upgrades.** The directory screen shows ~108 KB free. Is there an option for extended memory, or is 108 KB the hard ceiling for this hardware revision?
+4. **Block-number ceiling.** Is N9999 the hard max on this firmware, or can it be extended in machine parameters?
+5. **Backup battery replacement.** Exact part number. Procedure — does the CNC need to be powered on during swap to retain parameters, or is a full parameter backup + restore required?
+6. **Parameter backup procedure.** What's the canonical way on this 8055-M to dump **all** machine parameters (general + axes + spindle + SERCOS + serial + PLC) to a single file over DNC? Best format?
+7. **Firmware version.** What firmware revision is installed? Is an upgrade available/recommended for this hardware?
+8. **P22 value** — ask the technician to read and note it, to close the audit trail. It should route DNC to Line 2.
+9. **Harting hood pinout** — have them open the cabinet Harting labelled "RS232 DNC" and photograph the DB connector inside. **This is now an active suspect, not a formality**: the peer has been using a generic Amazon USB-C to RS-232 adapter (standard DB-9 pinout), but the CNC is non-standard — if there's no Fagor adaptation pigtail inside the hood, PC ground lands on CNC CTS and CNC ground is unterminated. That would explain the intermittent/partial transfers even before the `1001.pim` content issue kicks in. Confirm whether it matches the legacy-Fagor pinout in `docs/rs232_pinout.md` or the standard-DB9 pinout.
+10. **Long-term support.** Is Fagor still selling spares for this control? What's the realistic upgrade path if the CPU board fails (retrofit to 8055i? 8065?)?
+11. **Lubrication — INTZA.** Have the technician glance at the INTZA unit and tell us the model (if readable) and the recommended oil grade + top-up interval while he's here.
+12. **Safety door interlock.** The UTILIDADES screen shows the warning `6 SEGURIDAD PUERTAS ANULADA` (door-safety interlock bypassed). Is that an operator-choice override, a stuck sensor, or a temporary workaround? Should we restore it?
+
+## On-site with the technician — order of operations
+
+- **First action:** transfer `test.pim` with WinDNC to verify the DNC stack. If it works → move on. If it fails → technician diagnoses from scratch.
+- **Second action:** full parameter backup (via DNC) before the technician changes anything. Save to `logs/YYYY-MM-DD_tech_visit/params_before.txt`.
+- **Third action:** battery replacement with the technician's supervision.
+- **Fourth action:** walk through the questions list with the technician. **Write down verbatim answers** (don't paraphrase in the moment — you'll lose nuance).
+- **Throughout:** photograph every new screen the technician opens. Every error number, every sub-menu, every parameter page.
+
+## After the technician leaves — capture (Ruben + AI)
+
+- **[ruben] Scan the written notes**; save as `resources/photos/tech_notes_YYYY-MM-DD.jpg`.
+- **[ai] Transcribe the tech's answers** into `.agents/notes.md` under each relevant section. Also write a new `history.md` entry dated with the visit date summarising what was learned and what changed (params edited, battery swapped, etc.).
+- **[ruben+ai] Resolve or close the pending tasks** that the visit answered. If P22 gets read, close the P22 task. If the tech confirms the Harting pinout, close the "open Harting hood" task.
+- **[ai] Update `docs/rs232_pinout.md`** if the tech's pinout reading disagrees with either of the two documented variants.
+
+## Secondary tasks (do whenever)
+
+- [ruben] **Photo-verify Fagor version** — `UTILIDADES → VERSION` screen or the rear-panel stamped model code. Closes the 8050-vs-8055 audit trail in `docs/machine.md`.
+- [ruben] **Re-shoot INTZA nameplate** — close-up, flash off, raking light, TIPO + Nº legible. Unblocks the INTZA manual request.
+- [ruben] **Email Holke for schematics** (`comercial@eholke.com`, Spanish, attach `resources/photos/nameplate.jpg`). Request: operator manual for F 2230 Nº 997, **Esquema Nº 011001**, parts list. Their maintenance arm is SEMAVE.
+- [ruben] **Email INTZA** (`intza@intza.com`) once the TIPO photo is legible.
+- [ruben] **Photograph the serial/Ethernet ports on the back of the operator panel** (X1/X2/SERIE 1 labels), plus what's plugged in where.
+- [ruben] **Set up SSH into the Windows laptop** — install OpenSSH Server on Windows (not WSL). Give me IP + username once sshd is running.
+- [ai] **Write `connection/ssh_setup.md`** — PowerShell commands for the peer to enable sshd, open firewall port 22, set it to autostart. Include Mac-side `~/.ssh/config` snippet.
+- [ai] **Write `connection/network_map.md` template** — placeholders for CNC IP, laptop IP, SSH host alias, WinDNC port/baud.
+- [ai] **Draft `logs/README.md`** — the dated-subfolder convention and what a good session log contains.
+- [ai] **Once SSH is up, first remote inspection** — `C:\Fagor\WinDnc\` log files, `Get-PnpDevice -Class Ports` for COM enumeration. Write findings to `logs/YYYY-MM-DD_first_remote_session/notes.md`.
 
 ## In Progress
 
@@ -54,6 +84,9 @@ _(empty — claim a task by moving it here with `[YYYY-MM-DD owner]` prefix)_
 - [2026-04-21] **Scaffold repo**: created `~/repos/cnc/` with `AGENTS.md`, `README.md`, `.agents/tasks.md`, `docs/`, `logs/`. Layout documented in `AGENTS.md`.
 - [2026-04-21] **Create public GitHub remote**: https://github.com/rubenayla/cnc pushed as `origin/main`.
 - [2026-04-24] **Document machine from on-site photos**: added `docs/machine.md` (nameplate + control ID), `resources/photos/` with 7 resized JPEGs + index, `docs/README.md` with PDF policy and URL index.
-- [2026-04-24] **Fetch Fagor 8055-M manuals**: downloaded 6 PDFs (errors, examples, ordering handbook committed; installation, operating, programming kept local-only via `.gitignore` due to size). All URLs catalogued in `docs/README.md`.
-- [2026-04-24] **Reorganize into resources/**: moved photos and manuals out of `docs/` (which is now markdown-only) into `resources/photos/` and `resources/manuals/`, each with its own README.
-- [2026-04-24] **Correct control ID to 8055-M**: photo-read of boot screen was ambiguous (0 vs 5); Ruben confirmed on-site it's 8055-M (milling variant). `machine.md`, `AGENTS.md`, `README.md`, `notes.md` updated; VERSION-screen photo still pending for final audit trail.
+- [2026-04-24] **Fetch Fagor 8055-M manuals**: downloaded 8 PDFs (all committed after Ruben's call).
+- [2026-04-24] **Reorganize into resources/**: moved photos and manuals out of `docs/` (markdown-only) into `resources/photos/` and `resources/manuals/`.
+- [2026-04-24] **Correct control ID to 8055-M**: Ruben confirmed on-site; `machine.md`, `AGENTS.md`, `README.md`, `notes.md` updated.
+- [2026-04-25] **Audit Downloads folder**: 6 additional on-site photos of the DNC attempt moved into `resources/photos/` with descriptive names; originals + already-processed files deleted from `~/Downloads`.
+- [2026-04-25] **Identify root cause of "red text"**: `1001.pim` is a broken Fagor 8025→8055 converter output (too big, invalid block numbers). Wire is fine. Full writeup in `.agents/history.md`.
+- [2026-04-25] **Document RS-232 pinout**: `docs/rs232_pinout.md` with CNC DB-9, PC DB-9, PC DB-25 side diagrams + the two pinout variants seen in the wild.

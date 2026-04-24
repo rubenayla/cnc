@@ -34,12 +34,22 @@ Fagor 8055-M SERCOS CNC troubleshooting repo — see `docs/machine.md` for the i
 ## Current symptom
 WinDNC: when peer types commands, characters show against a **red background** — which Fagor's WinDNC manual documents as "serial port not initialised / peer not responding". It's a port-layer-unhealthy indicator, not a specific bug name.
 
-**Parameters confirmed correct from the `PARAM. LINEA SERIE 2` photo** (19200 / 8 / N / 1 / Fagor protocol / DNC auto-on / XON-XOFF on). Debug order below is drawn from a forum survey (see `.agents/history.md` 2026-04-24 "Forum survey" entry and the fixes section of `.agents/notes.md`):
+**Parameters confirmed correct from the `PARAM. LINEA SERIE 2` photo** (19200 / 8 / N / 1 / Fagor protocol / DNC auto-on / XON-XOFF on). **Port assignment confirmed** from `cnc_utilities_serie_selector.jpg`: Line 1 = RS-422, Line 2 = DNC/RS-232 — the cabinet "RS232 DNC" label is correct. Observed reproduction: `COPIAR LINEA SERIE 2 EN P999` → `Bloques transmitidos` counts some blocks → terminates in `INSTRUCCION INCORRECTA`.
+
+**Root causes identified 2026-04-25** — two independent issues, both open:
+
+1. **File content**: `resources/programs/1001.pim` is a Fagor 8025→8055 converter output — 527 KB after junk-stripping vs the CNC's 108 KB free EEPROM, with block numbers up to N99995 vs the 8055-M's N9999 ceiling. Cannot be stored as-is. Fix is on the PC/CAM side (re-generate cleanly, or use DNC execution mode instead of COPY).
+2. **Cable/adapter pinout**: peer uses a generic Amazon USB-C to RS-232 adapter. The Fagor CNC-side DB-9 is non-standard (pin 7 = GND, not pin 5). Unless the cabinet's Harting hood has a Fagor adaptation pigtail, PC ground lands on CNC CTS and the transfer is working only through chassis-ground coupling — intermittent by nature. See `docs/rs232_pinout.md` for the correct pinout and `.agents/history.md` 2026-04-25 for the analysis.
+
+Both need to be resolved for a reliable DNC path. The technician visit (see `.agents/tasks.md`) should confirm the Harting hood pinout in one photo.
+
+Debug order below remains useful for any *independent* future DNC issue, but is not the path for the current one:
 
 1. **Replace the CPU-board Saft LS14500 lithium first** — battery is dead (frozen clock). Any params fix will silently evaporate at next power-cycle until this is done.
 2. **Reinstall WinDNC** on the laptop — cheap; occasional corrupted-install cause.
-3. **Read `P22`** on the CNC — decides whether DNC rides on `X3` (RS-232) or `X4` (RS-422). If wrong, the cable is plugged into the wrong physical port.
-4. **Drop baud to 9600** on both ends and retest. Early 8055s can't reliably do 19200; ours is `P000=8` (19200), on the edge.
-5. **Match WinDNC flow control to XON/XOFF** (hardware/RTS-CTS off) — CNC has `P010=ON`; PC must match.
+3. **Drop baud to 9600** on both ends and retest. Early 8055s can't reliably do 19200; ours is `P000=8` (19200), on the edge.
+4. **Match WinDNC flow control to XON/XOFF** (hardware/RTS-CTS off) — CNC has `P010=ON`; PC must match.
+5. **Inspect the file being sent**: `INSTRUCCION INCORRECTA` says the CNC parsed a line it can't execute. Check that the program doesn't have ESC or other non-ASCII terminators, that it starts with a valid Fagor header, and that line endings are CR-only or CRLF consistently. If the file is `resources/programs/1001.pim` (already in the repo), compare its first/last bytes against a known-good 8055 program.
 6. **Verify the cable pinout**: `2↔3, 3↔2, 5↔5`, and `4-6-8` shorted at *each* DB9 hood. Open the Harting hood to confirm.
 7. **Swap USB-serial adapter for FTDI FT232** if the laptop currently uses a Prolific PL-2303 (clone chips are widespread and buggy).
+8. **Read `P22`** — deprioritised (port assignment already confirmed on-screen), but still useful for the audit trail.

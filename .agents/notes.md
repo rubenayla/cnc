@@ -101,7 +101,12 @@ Debug heuristic:
 
 - Cabinet side: Harting HAN hood labelled **"RS232 DNC"** on the electrical enclosure (see `resources/photos/rs232_dnc_connector.jpg`). Actual DB connector inside the hood hasn't been opened/photographed yet.
 - CNC side: DNC is assigned to **Serial Line 2** per the parameters screen (`DNC 2` header).
-- **On most 8055 OEM builds the ports map like this**: `X3` = RS-232 (9-pin male SUB-D), `X4` = RS-422 (25-pin male). Parameter **`P22`** selects which physical port carries DNC — `P22=1` forces RS-232 + Ethernet, RS-422 disabled; other values route DNC to RS-422. The Harting hood is labelled "RS232" but the screen puts DNC on Line 2 — **the P22 value has to be read before trusting either label**. Mis-routed DNC (CNC listening on X4/RS-422, cable plugged into X3/RS-232) presents exactly as "half-working" comms: stray differential levels partially couple through the single-ended PC receiver.
+- **On this machine specifically**, port assignment is confirmed by the UTILIDADES screen: `resources/photos/cnc_utilities_serie_selector.jpg` shows soft-keys labelled **`L. SERIE 1 (RS-422)`** and **`L. SERIE 2 (DNC)`**. So:
+  - Line 1 = RS-422 (the 25-pin port on the back of the CNC)
+  - Line 2 = DNC over RS-232 — this is the one the cabinet Harting hood routes out to
+  - The "RS232 DNC" cabinet label is correct, not misleading.
+- **This resolves the earlier P22 concern**: the cabinet is on the right physical port, and the CNC-side DNC routing matches. Reading P22 on-site is still useful for the audit trail but it's no longer a high-priority suspect.
+- Background from the forum survey (kept for reference in case another 8055 crops up): on *most* 8055 OEM builds `X3` = RS-232 Line 1, `X4` = RS-422 Line 2 — the opposite of what this machine has. So port-number-to-line mapping is not universal; always trust the on-screen soft-key label.
 
 ---
 

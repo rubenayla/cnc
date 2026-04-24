@@ -13,6 +13,12 @@ On-site photos of the machine. Referenced from `docs/machine.md` and `.agents/no
 | `cabinet_side_aux.jpg`      | Side panel with "ANULA…" pushbutton and a Harting connector            |
 | `intza_lubricator.jpg`      | INTZA centralized lubricator with sight gauge + pressure dial          |
 | `rs232_dnc_connector.jpg`   | Harting HAN hood labelled "RS232 DNC" — where the WinDNC cable plugs in |
+| `cnc_utilities_main.jpg`    | `UTILIDADES` screen, file-management soft-keys (`DIRECTORIO / COPIAR / BORRAR / RENOMBRAR / PROTECCIONES / CAMBIAR FECHA`) |
+| `cnc_utilities_programas.jpg` | `UTILIDADES → PROGRAMA` sub-menu, `L. SERIE 2 / CAMBIAR DIR (DNC2)` soft-key visible |
+| `cnc_utilities_serie_selector.jpg` | **Key photo**: `UTILIDADES` source selector showing `L. SERIE 1 (RS-422)` and `L. SERIE 2 (DNC)` labels — proves port assignment on this machine |
+| `cnc_dnc_copy_prompt.jpg`   | `COPIAR LINEA SERIE 2 EN` prompt — start of a DNC pull into memory |
+| `cnc_dnc_copy_transmitting.jpg` | Mid-transfer: `COPIAR LINEA SERIE 2 EN P999`, `Bloques transmitidos` counter, `ABORTAR` soft-key |
+| `cnc_dnc_copy_error.jpg`    | Post-failure: `INSTRUCCION INCORRECTA` error after the copy attempt — P999 was created but empty/partial |
 
 All images resized to ≤1800 px long side, JPEG q85. Originals (HEIC / full-res JPEG) are **not** kept in the repo.
 

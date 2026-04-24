@@ -6,6 +6,133 @@ Chronological log of what was found and decided, newest first. Append-only. For 
 
 ---
 
+## 2026-04-25 — RS-232 pinout terminology and history (reference)
+
+Logged as facts to remember when reading old industrial docs vs modern PC docs. (Strictly this is timeless knowledge that belongs in `notes.md`, but Ruben asked for it here as a learning record — kept dated for the audit trail.)
+
+**The thing called "RS-232" standardises signals, not connector pinouts.** EIA RS-232 (1960) defines voltage levels (±3 V to ±15 V), bit timing, and a list of named signals (TxD, RxD, GND, DTR, DSR, RTS, CTS, DCD, RI). It also originally specified a **DB-25 connector with a specific pin assignment** (GND on pin 7, TxD on pin 2, RxD on pin 3, DTR on pin 20, DSR on pin 6, RTS on pin 4, CTS on pin 5, DCD on pin 8). For ~25 years, that DB-25 *was* the RS-232 pinout — the only one.
+
+**There has never been an "official" RS-232 DB-9 pinout in the EIA RS-232 spec itself.** The DB-9 form factor on serial ports is purely a 1984 IBM PC/AT design choice — IBM dropped the 25-pin port for board-space reasons and reassigned the pins on the new 9-pin shell:
+
+| Signal | IBM PC/AT DB-9 (1984)  |
+|--------|-----------------------|
+| DCD    | 1                     |
+| RxD    | 2                     |
+| TxD    | 3                     |
+| DTR    | 4                     |
+| **GND**| **5**                 |
+| DSR    | 6                     |
+| RTS    | 7                     |
+| CTS    | 8                     |
+| RI     | 9                     |
+
+This IBM layout was later formalised — but only in 1990, by the TIA, not the EIA — as **TIA-574** ("9-Position Non-Synchronous Interface Between DTE and DCE", also written **EIA/TIA-574** or **EIA-574**). So:
+
+- **DE-9** / **D-sub 9** = the *connector shape* (D-shaped shell, 9 pins, "E" body size in the D-sub family). Says nothing about which pin carries which signal.
+- **TIA-574** = the *modern PC pinout on a DE-9*. This is what every USB-to-RS-232 adapter, every Windows COM port, every modem, every consumer DB-9 cable assumes today.
+- **"RS-232"** by itself = ambiguous. At the signal level it's well-defined; at the connector level it could mean DB-25 (original) or TIA-574 (post-IBM).
+
+**Why Fagor's 1990s-era CNC has a "weird" pinout.** Fagor put DB-9 connectors on their CNCs but kept the **EIA RS-232 DB-25 pin numbers** wherever they fit. Pin 7 = GND because that's what RS-232 *originally* specified; pin 6 = DSR same reason; pin 5 = CTS same reason; DTR didn't have a pin under 9 (it was originally pin 20) so it ended up on pin 9. So Fagor's pinout is **"the original RS-232 DB-25 layout compressed onto a DB-9 shell"** — entirely standards-compliant for the standard that existed when the 8050/8055 was designed. They just predate TIA-574 winning.
+
+**The phrase to use when disambiguating**: "The CNC follows the original **EIA RS-232 DB-25** pin numbers preserved on a DB-9 shell. The PC follows **TIA-574** (the IBM PC/AT DB-9 layout). Both are 'RS-232' at the signal level."
+
+**Other industrial gear with the same kind of legacy DB-9 pinout** (so this isn't a Fagor quirk):
+- Heidenhain TNC controls (own DB-9 layout)
+- Siemens Sinumerik older variants (DB-15)
+- Allen-Bradley PanelView (own DB-9 layout)
+- Cisco router console ports (RJ-45 with proprietary pinout, for years)
+- Apple Mac serial ports 1984–1998 (Mini-DIN-8)
+
+Every one of these requires a custom adapter cable to talk to a TIA-574 PC. **"RS-232 cable" without a pinout drawing is about as specific as "USB cable" — physically similar parts, not electrically interchangeable.**
+
+**Practical implication for this repo**: when ordering a "Fagor 8055 DNC cable" or building one, the spec is "DB-9 male PC end (TIA-574) to DB-9 male CNC end (legacy EIA RS-232 DB-25-on-DB-9)" with the pin remap and handshake loopbacks already documented in `docs/rs232_pinout.md`.
+
+---
+
+## 2026-04-25 — Second open issue: the USB adapter + cable path may also be wrong
+
+**What happened:** Ruben mentioned the peer is connecting via "a normal USB-C to RS-232 adapter from Amazon" plus (presumably) a generic DB-9 cable between the adapter and the cabinet's Harting hood.
+
+**Why this matters:** commodity USB-to-RS-232 adapters expose the **standard** DB-9 DTE pinout (pin 5 = GND, pin 4 = DTR, pin 8 = CTS). The Fagor 8050/8055 CNC-side DB-9 is **non-standard** — pin 5 = CTS, pin 6 = DSR, pin 7 = GND, pin 9 = DTR (see `docs/rs232_pinout.md`). If the peer's cable between the adapter and the Harting is a generic straight-through or a generic null-modem cable, then **PC ground (pin 5) connects to CNC pin 5 (CTS)** and CNC ground (pin 7) is unterminated — which should give zero bytes through.
+
+But bytes *are* going through: the `Bloques transmitidos` counter advanced during the failed COPY attempt. Two plausible explanations:
+
+1. **The cabinet Harting hood contains a Fagor adaptation pigtail** that internally remaps PC DB-9 pin 5 → CNC DB-9 pin 7 and sets up the handshake loopbacks. This is what a proper factory install would look like on a 1998 machine. Opens-the-hood-and-looks resolves it.
+2. **Chassis/mains ground is bonding the laptop and machine enough that RS-232 partially works without a proper signal-ground wire.** This would explain intermittent success, poor noise margin, and the "half-transferred" behaviour. Not sustainable — noise kills it the moment anything heavy switches in the shop.
+
+**Open question for the technician visit**: have them open the Harting hood and tell us whether there's Fagor-specific pin remapping inside or whether the cable is wired as a generic DB-9. If generic, the cable needs replacing (easy: build a 3-wire cable per `docs/rs232_pinout.md`, or buy a Fagor-specific pre-wired cable like "CNC-SW-25M" on eBay).
+
+**How to apply:** the "inspect Harting hood" task in `.agents/tasks.md` just got more important — it's no longer a formality for an audit trail, it's an active suspect. Even if `1001.pim` is replaced with a clean program, a marginal cable will keep producing intermittent failures. Both issues need to be resolved to have a reliable DNC path.
+
+**Caveat for the minimal-test-program plan**: if the cable is marginal-but-coupling-via-chassis-ground, the 4-line test program might still get through (small payload, fewer chances for a bit to flip), and we'd incorrectly conclude the wire is fine. Safer: run the minimal test multiple times, *and* ask the technician to validate the wiring independently.
+
+---
+
+## 2026-04-25 — Retrospective: why did the first three debug passes yield no useful data?
+
+**The chain of misdiagnosis.** Across the first three debug passes (repo scaffolding → "red text" symptom triage → forum survey) we progressively narrowed suspects to: dead battery → baud mismatch → flow control → cable pinout → USB-serial adapter → `P22` port routing. Each was plausible in isolation. None of them was the bug. The actual cause (file content 5–7× too big for the CNC's EEPROM and containing block numbers above the 8055-M's ceiling) was visible in:
+
+1. The **`Bloques transmitidos` counter** on the CNC during the COPY attempt — that counter advancing *at all* means the wire is passing bytes, which should have moved "wire problem" off the suspect list on day one.
+2. The **`INSTRUCCION INCORRECTA`** error at the end — an explicit "I parsed a line and it's not valid Fagor G-code" signal from the CNC. That message on its own rules out physical-layer problems and narrows to content/protocol. It was not a handshake or framing error.
+3. The **"10 programas, 108669 bytes libres EEPROM"** status line on the UTILIDADES directory screen — announces the 108 KB memory ceiling. Given a 527 KB (post-junk-strip) source file, the ceiling alone is disqualifying.
+4. The **`;51 errores, 0 warnings`** comment and the **9488 occurrences of `;Bloque CNC8025 incorrecto`** inside `1001.pim`. The file self-announces as a partially-failed 8025→8055 conversion.
+
+None of these signals made it into the debug loop for two conversational rounds. **Why.**
+
+- **Symptom framing drift.** "Red text in WinDNC" became the working description of the bug. We (me and the user) kept treating that phrase as a wire-layer fault because WinDNC's documentation says red = "port not initialised / peer not responding". But in the Fagor protocol, a CNC that NAKs an incoming block counts as "peer not responding" too — so red text has two disjoint root-cause classes (wire-layer *or* content-layer), and we only ever chased the first one.
+- **PC-centric vs CNC-centric debugging.** Most of our time was spent on the laptop side: WinDNC config, COM port, USB-serial adapter, cable pinout. The peer was presumably operating the CNC in parallel, but we did not ask for CNC-side observations (screen contents, error numbers, memory state, what button was pressed) until the photo dump arrived this session. Every one of the four signals above was only visible on the CNC, not in WinDNC.
+- **No minimal reproduction.** We never asked for a 4-line test program to be sent first. A minimal program would have either succeeded (proving the wire + file-content boundary lives in the file, not in the cable) or failed (proving the wire) in under a minute. Instead we reasoned top-down about a complex stack.
+- **`1001.pim` committed without inspection.** The file appeared in Ruben's Downloads and got committed in the previous session *without me opening it*. A `head -5 1001.pim` at that moment would have shown `;51 errores, 0 warnings` — the bug's self-diagnosis was in the file the whole time.
+- **Mirror confirmation on the CNC was missing for too long.** We had the `PARAM. LINEA SERIE 2` photo early (baud/parity/etc. all correct), but no photo of an *attempted transfer in progress* until this session. A stalled `Bloques transmitidos: 0` would have reopened wire-layer suspects; an advancing counter would have closed them. Either way, informative.
+
+**Why "we got no data" on previous rounds.** We did get data — we just got the wrong data. We got WinDNC colour-coding (one bit: red or not red) and self-reported parameter values. What we didn't get was (a) what the CNC was doing while the laptop was red, (b) what file was being sent, (c) how big the CNC's available memory was, (d) what error, if any, the CNC showed. All four would have been a single on-site photo per question. Without them, every subsequent round was reasoning in a vacuum.
+
+**What to do differently next time** (also now encoded as procedure in `.agents/notes.md` and as tasks):
+
+1. **Before suspecting the wire, inspect the payload.** `file`, `head`, `tail`, `wc -l`, `grep -c` on the program file being sent. One minute of work.
+2. **Before theorising, ask for a minimal reproduction.** A 4-line test program either succeeds (narrows to file content) or fails (narrows to wire). This should be the first physical action on any new DNC issue.
+3. **Ask for the CNC's side of the story.** Every time WinDNC reports something, ask: "what does the CNC screen say? Is there an error number? How many bloques transmitidos?" The CNC is the authority on its own state; WinDNC is a thin proxy.
+4. **Read committed artifacts.** When a user drops a file in the repo (as with `1001.pim`), open it and audit it, don't just list it in the commit.
+5. **Write the bug description in CNC-native terms.** "INSTRUCCION INCORRECTA after N blocks" or "COPIAR aborted at bloque 52" — not "red text in WinDNC". The former points at the correct layer; the latter doesn't.
+
+This entry is the meta-lesson for the repo; the concrete status for today's finding is in the next entry ("Port assignment confirmed ..." and "File `1001.pim` is the bug ...").
+
+---
+
+## 2026-04-25 — Port assignment confirmed on-screen; live reproduction captured
+
+**What happened:** audit of Ruben's Downloads folder found 6 on-site photos from 2026-04-24 that hadn't made it into the repo yet — they document a live attempt at a DNC pull from the CNC's UTILIDADES screen. All six are now in `resources/photos/` (files prefixed `cnc_utilities_*` and `cnc_dnc_copy_*`) and the originals have been removed from Downloads per the "temp files don't live in Downloads" rule.
+
+**Key finding — port assignment resolved:** `cnc_utilities_serie_selector.jpg` shows soft-keys labelled **`L. SERIE 1 (RS-422)`** and **`L. SERIE 2 (DNC)`**. So on *this* machine Line 2 is the RS-232 / DNC port (opposite of the typical 8055 OEM build the forum survey described). This **matches** the cabinet's "RS232 DNC" Harting label and the `DNC 2` indicator on the parameters screen. The `P22` routing concern is effectively settled — reading it is still worth an entry in the audit trail but it's no longer a high-priority suspect.
+
+**Live reproduction captured:**
+- `cnc_dnc_copy_prompt.jpg` — UTILIDADES → COPIAR → LINEA SERIE 2 (DNC) prompt, asking for a destination program number.
+- `cnc_dnc_copy_transmitting.jpg` — "COPIAR LINEA SERIE 2 EN P999", `Bloques transmitidos: N` progress counter, `ABORTAR` soft-key visible. Some blocks *do* arrive.
+- `cnc_dnc_copy_error.jpg` — post-failure: directory now shows 11 programs (P999 was created) but the status bar reads **`INSTRUCCION INCORRECTA`**.
+
+**Why this changes the debug model:** the symptom is *not* a dead port — blocks are arriving and P999 was created. What the CNC is rejecting is the *content* of those blocks. "INSTRUCCION INCORRECTA" means the 8055 parsed a line it doesn't recognise as valid Fagor G-code. Likely causes (in rough order):
+
+1. **File format issue on the PC side** — ESC, NUL, or other binary trailer that the PC-side sender left in; mixed/wrong line endings (CR-only vs LF-only vs CRLF); BOM at the start of the file; a non-Fagor header line.
+2. **Baud-induced garbling** at 19200 — bytes get corrupted on the wire, one bit flipped produces an invalid opcode. This is consistent with the forum advice to drop to 9600.
+3. **Flow-control mismatch causing mid-line drops** — blocks land with missing characters, producing invalid G-code.
+4. **Encoding mismatch** — the 8055 expects 7-bit-clean ASCII; anything high-bit (accented chars in comments, smart quotes from a Word export) breaks parsing.
+
+The `resources/programs/1001.pim` file committed in the previous session is probably the program the peer was trying to send. Inspected it — and **it's fundamentally broken for this CNC**, for two independent reasons:
+
+1. **Size.** The file is 792 KB / 29,488 lines. After stripping the junk (see below), it's still 527 KB / 20,000 lines. The CNC shows `108669 bytes libres EEPROM` on the UTILIDADES screen — i.e. ~108 KB of free program memory. The file is **~5–7× too big to fit**. Partway through the transfer the CNC runs out of room and aborts.
+2. **Block numbering.** Block numbers in the file climb to **N99995** (sample: `N99950`, `N99955`, `N99960` … `N99995`). The 8055-M's block-number ceiling is **N9999** — everything above that is a syntax error. That alone would produce `INSTRUCCION INCORRECTA`.
+3. **Provenance.** The header is `%1001.PIM,M,` (valid 8055-M), but inside there are **9488** occurrences of `;Bloque CNC8025 incorrecto` (converter-annotation comments), plus a one-liner `;51 errores, 0 warnings` near the top. The file was clearly produced by a converter that translated a **Fagor 8025** program (earlier generation) to 8055 format and flagged 51 block types it couldn't convert — leaving the bad blocks plus redundant comment markers in place.
+
+So the root cause of the failed transfer is the file, not the wire. DNC transport is demonstrably passing bytes (blocks were transmitted, P999 got created). The CNC is legitimately rejecting the content.
+
+**Fix path:** either (a) re-generate a clean 8055-M program from the original source on the PC's CAM side (don't go through the 8025→8055 converter), or (b) use **DNC execution mode** instead of COPY — the 8055-M can run large programs by streaming them from the PC block-by-block without storing them in EEPROM, which works around the 108 KB limit. That's also chapter material in `fagor_8055m_operating.pdf`. Either way, don't chase the cable / adapter / baud any further until a known-good program is loaded; the transport is fine.
+
+**How to apply:** next on-site session, run the existing "drop baud to 9600" task (procedure already in `tasks.md`) *and* check the content of the program file before sending. If 9600 fixes it, it was baud-induced garbling. If it still fails with INSTRUCCION INCORRECTA, the program file itself is the bug and we strip it down to a minimal test (a single-line `%` header + `(MSG "test") M30`) to isolate format vs. transport. Don't change the cable or adapter yet — the port is demonstrably passing bytes.
+
+Current-symptom section in `AGENTS.md` updated to reflect this (P22 deprioritised; new #5 step about inspecting the sent file).
+
+---
+
 ## 2026-04-24 — Forum survey: WinDNC "red text" is a documented port-health indicator, not a bug
 
 **What happened:** a subagent surveyed cnczone, industryarena, practicalmachinist, foro.metalaficion, usinages.com, aggsoft, atrump, and the WinDNC manual itself to see how common this symptom is and what actually fixes it. Ranked list and known-working recipe went into `.agents/notes.md` ("WinDNC red text / red background — what it really means and the known fixes").
