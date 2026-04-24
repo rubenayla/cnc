@@ -29,7 +29,7 @@ Port assignment, machine parameters (baud, bits, parity, flow control, protocol)
 - **WinDNC log folder zipped.** `C:\Fagor\WinDnc\` — make a zip before the visit in case the technician clears it. Save to `logs/YYYY-MM-DD_tech_visit/windnc_before.zip`.
 - **USB-serial adapter details captured.** Device Manager → COM ports → properties → hardware ID (FTDI / Prolific / CH340 / CP2102). Photograph the physical adapter, both ends. **Note the model / Amazon listing name if possible** — the generic ones expose standard DB-9 PC pinout, which does NOT match the CNC's non-standard pinout unless a Fagor pigtail sits between them.
 - **Photograph the current cable path end-to-end.** From the laptop USB-C port → USB-to-RS-232 adapter → DB-9 cable → Harting hood → cabinet. One photo of each link. This is the evidence the technician needs to diagnose the wiring suspect without having to re-trace it themselves.
-- **Battery type identified.** Pre-buy if possible: expected is a 3.6 V Saft LS14500 (AA-sized) lithium on the 8055 CPU board. Confirm with the technician before swapping.
+- **Battery — pre-buy only, DO NOT SWAP YET.** Expected: 3.6 V Saft LS14500 (AA-sized) lithium on the 8055 CPU board. Confirm part with the technician *before* swapping. **Battery replacement is on-site with the technician supervising — see "On-site" section.** A solo swap risks losing every machine parameter (axis travel limits, spindle, SERCOS, PLC) on a 1998 mill that has no recent backup. Don't.
 - **Questions list ready** (see below).
 
 ## Questions to ask the technician on-site
@@ -51,7 +51,7 @@ Port assignment, machine parameters (baud, bits, parity, flow control, protocol)
 
 - **First action:** transfer `test.pim` with WinDNC to verify the DNC stack. If it works → move on. If it fails → technician diagnoses from scratch.
 - **Second action:** full parameter backup (via DNC) before the technician changes anything. Save to `logs/YYYY-MM-DD_tech_visit/params_before.txt`.
-- **Third action:** battery replacement with the technician's supervision.
+- **Third action: battery replacement (technician-led, do NOT do this without them).** Saft LS14500 (or whatever the technician confirms). The CNC must be powered on during the swap so the supercaps/RAM hold parameters during the ~30 seconds the battery is out — confirm with the tech before unscrewing anything. The "Second action" parameter backup is the safety net if it goes wrong.
 - **Fourth action:** walk through the questions list with the technician. **Write down verbatim answers** (don't paraphrase in the moment — you'll lose nuance).
 - **Throughout:** photograph every new screen the technician opens. Every error number, every sub-menu, every parameter page.
 
